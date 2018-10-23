@@ -27,6 +27,8 @@ using System.Collections.Generic;
 using System.Reflection;
 using Gtk;
 using TrickyUnits;
+using TrickyUnits.GTK;
+using UseJCR6;
 
 namespace ScenLangCreate
 {
@@ -47,9 +49,37 @@ namespace ScenLangCreate
 
         }
 
-        static void OnBrowse(object sender,EventArgs e){}
+        static void OnBrowse(object sender,EventArgs e){
+            Data["Project"].Text = QuickGTK.RequestDir("Please select a directory to store this project in");
+        }
         static void OnEntry(object sender,EventArgs e){}
-        static void OnGoForIt(object sender,EventArgs e){}
+        static void OnGoForIt(object sender,EventArgs e){
+            var outdir = Data["Project"].Text;
+            var prj = System.IO.Path.GetFileName(outdir);
+            var langs = Languages.Buffer.Text.Split('\n');
+            var gini = new TGINI();
+            gini.D("Author", Data["Author"].Text);
+            gini.D("Copyright", Data["Author"].Text);
+            gini.D("Notes", Data["License"].Text);
+            gini.D("License", Data["License"].Text);
+            gini.D("lzma", "YES");
+            var outt = "[rem]\nEmpty now\n[tags]\n\n[scenario]\n\n";
+            var li = 0;
+            if (langs.Length < 1) { QuickGTK.Error("At least one language is required to do the job!"); return; }
+            foreach(string flang in langs){
+                li++;
+                Console.WriteLine($"Creating language #{li}: {flang}");
+                var lang = flang.Trim(); gini.D($"Lang{li}.Name", lang);
+                var outj = outdir + "/" + lang + ".jcr"; gini.D($"Lang{li}.File", outj);
+                var jo = new TJCRCreate(outj, "lzma");
+                jo.AddString(outt, "BASICENTRY", "lzma", Data["Author"].Text, Data["License"].Text);
+                jo.Close();
+            }
+            Console.WriteLine("Creating project GINI");
+            gini.SaveSource(outdir + "/" + prj + ".scenlang.gini");
+            QuickGTK.Info("Project has been created.\nYou can now use the regular ScenLang tool and open project file:\n\n" + outdir + "/" + prj + ".scenlang.gini");
+            Application.Quit();
+        }
 
         public static void AddEntry(string id, string caption, bool browse=false){
             var label = new Label(caption); label.ModifyFg(StateType.Normal, new Gdk.Color(255, 255, 0));
@@ -88,6 +118,7 @@ namespace ScenLangCreate
         {
             MKL.Version("ScenLang - Creation Wizard - ScenLangCreate.cs","18.10.23");
             MKL.Lic    ("ScenLang - Creation Wizard - ScenLangCreate.cs","GNU General Public License 3");
+            JCR6_lzma.Init();
             Application.Init();
             MainWindow win = new MainWindow();
             win.ModifyBg(StateType.Normal, new Gdk.Color(0, 0, 25));
